@@ -79,11 +79,13 @@ public class Acid2xBenchmark {
   public void testFilterRows(Acid2xState state) throws IOException {
     BitSet bs = new BitSet(VectorizedRowBatch.DEFAULT_SIZE);
     state.fake.reset();
+    int n = 0;
     for (VectorizedRowBatch batch = state.fake.next(null);
         batch != null;
         batch = state.fake.next(batch)) {
-      bs.clear();
+      bs.set(0, bs.size(), true);
       state.registry.findDeletedRecords(batch, bs);
+      n += bs.cardinality();
     }
   }
 }

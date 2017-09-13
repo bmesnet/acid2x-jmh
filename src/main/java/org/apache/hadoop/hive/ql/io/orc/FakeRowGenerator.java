@@ -30,7 +30,7 @@ public class FakeRowGenerator {
   private long[] bucketCounts = new long[txncount];
 
   
-  private long[] dataStream;
+  private int[] dataStream;
 
   private int offset = 0;
   private FakeDeleteGenerator deleter;
@@ -57,12 +57,12 @@ public class FakeRowGenerator {
     // txns are in sorted order
     Arrays.sort(buckets);
     
-    dataStream = new long[2*rows];
+    dataStream = new int[2*rows];
     
     int index = 0;
     for (int i = 0; i < buckets.length; i++) {
       for (int j = 0; j < bucketCounts[i]; j++) {
-        dataStream[index] = buckets[i];
+        dataStream[index] = (int)buckets[i];
         dataStream[index+1] = j;
         index += 2;
       }
