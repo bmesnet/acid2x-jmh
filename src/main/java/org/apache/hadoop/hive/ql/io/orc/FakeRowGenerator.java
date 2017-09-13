@@ -28,8 +28,9 @@ public class FakeRowGenerator {
   
   private long[] buckets = new long[txncount];
   private long[] bucketCounts = new long[txncount];
-  // rows -> bucket mapping
-  NavigableMap<Integer, Integer> rowMap = new TreeMap<Integer, Integer>();
+
+  
+  private long[] dataStream;
 
   private int offset = 0;
   private FakeDeleteGenerator deleter;
@@ -56,10 +57,15 @@ public class FakeRowGenerator {
     // txns are in sorted order
     Arrays.sort(buckets);
     
-    int rs = 0;
+    dataStream = new long[2*rows];
+    
+    int index = 0;
     for (int i = 0; i < buckets.length; i++) {
-      rowMap.put(rs, i);
-      rs += bucketCounts[i];
+      for (int j = 0; j < bucketCounts[i]; j++) {
+        dataStream[index] = buckets[i];
+        dataStream[index+1] = j;
+        index += 2;
+      }
     }
   }
   
@@ -122,17 +128,15 @@ public class FakeRowGenerator {
     long maxOtid = Long.MIN_VALUE;
 
     for (int i = 0; i < remaining; i++) {
-      // should not return NULL
-      int zero = rowMap.floorKey(offset + i);
-      int bucket = rowMap.get(zero);
-      long rowId = offset + i - zero;
-      long txnid = buckets[bucket];
+      
+      long txnid = dataStream[2*(i+offset)];
+      long rowid = dataStream[2*(i+offset)+1];
 
       minOtid = Math.min(txnid, minOtid);
       maxOtid = Math.max(txnid, maxOtid);
 
       ((LongColumnVector) batch.cols[OrcRecordUpdater.ORIGINAL_TRANSACTION]).vector[i] = txnid;
-      ((LongColumnVector) batch.cols[OrcRecordUpdater.ROW_ID]).vector[i] = rowId;
+      ((LongColumnVector) batch.cols[OrcRecordUpdater.ROW_ID]).vector[i] = rowid;
     }
 
     if (minOtid == maxOtid) {
@@ -143,8 +147,7 @@ public class FakeRowGenerator {
     offset += remaining;
     VectorizedBatchUtil.setBatchSize(batch, remaining);
 
-    Arrays.fill(
-        ((LongColumnVector) batch.cols[OrcRecordUpdater.BUCKET]).vector, 0);
+    ((LongColumnVector) batch.cols[OrcRecordUpdater.BUCKET]).vector[0] = 0;
     VectorizedBatchUtil.setRepeatingColumn(batch, OrcRecordUpdater.BUCKET);
 
     VectorizedBatchUtil.setNoNullFields(batch);
