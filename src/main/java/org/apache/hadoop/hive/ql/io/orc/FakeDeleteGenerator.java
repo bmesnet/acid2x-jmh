@@ -57,7 +57,13 @@ public class FakeDeleteGenerator {
         }
         j += k;
       }
-      
+    }
+    
+    // we round up deletes for the small case
+    count = 0;
+    for (int i = 0; i < buckets.length; i++) {
+      final BitSet bs = deleteBits[i];
+      count += bs.cardinality();
     }
   }
 

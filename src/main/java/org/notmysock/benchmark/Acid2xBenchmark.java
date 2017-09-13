@@ -18,7 +18,9 @@ import org.openjdk.jmh.annotations.Fork;
 import org.openjdk.jmh.annotations.Measurement;
 import org.openjdk.jmh.annotations.Mode;
 import org.openjdk.jmh.annotations.OutputTimeUnit;
+import org.openjdk.jmh.annotations.Param;
 import org.openjdk.jmh.annotations.Scope;
+import org.openjdk.jmh.annotations.Setup;
 import org.openjdk.jmh.annotations.State;
 import org.openjdk.jmh.annotations.Warmup;
 
@@ -31,16 +33,36 @@ import org.openjdk.jmh.annotations.Warmup;
 public class Acid2xBenchmark {
   @State(Scope.Benchmark)
   public static class Acid2xState {
-    final FakeRowGenerator fake = new FakeRowGenerator(0, 999, 10_000, 0.01f);
-    final Iterable<Entry<DeleteRecordKey, DeleteReaderValue>> deletes = fake
-        .getDeletes();
-    final ValidTxnList txns = fake.getValidTxns();
-    final ColumnizedDeleteEventRegistry registry = new ColumnizedDeleteEventRegistry(
-        txns, deletes, fake.getDeleteCount());
+    
+    @Param({"10000", "1000000"})
+    public int rows;
+    
+    @Param({"0.01f", "0.1f"})
+    public float deleteFrac;
+    
+    public FakeRowGenerator fake;
+    public Iterable<Entry<DeleteRecordKey, DeleteReaderValue>> deletes;
+    public ValidTxnList txns;
+    public ColumnizedDeleteEventRegistry registry;
   }
+  
+  
+  @Setup
+  public void setUp(Acid2xState state) {
+    System.out.println("Setting up for " + state.rows);
+    state.fake = new FakeRowGenerator(0, 999, state.rows, state.deleteFrac);
+    state.deletes = state.fake
+        .getDeletes();
+    state.txns = state.fake.getValidTxns();
+    state.registry = new ColumnizedDeleteEventRegistry(
+        state.txns, state.deletes, state.fake.getDeleteCount());
+  }
+  
+  
   
   @Benchmark
   public void testGenerateRows(Acid2xState state) {
+    state.fake.reset();
     for (VectorizedRowBatch batch = state.fake.next(null);
         batch != null;
         batch = state.fake.next(batch)) {
@@ -56,6 +78,7 @@ public class Acid2xBenchmark {
   @Benchmark
   public void testFilterRows(Acid2xState state) throws IOException {
     BitSet bs = new BitSet(VectorizedRowBatch.DEFAULT_SIZE);
+    state.fake.reset();
     for (VectorizedRowBatch batch = state.fake.next(null);
         batch != null;
         batch = state.fake.next(batch)) {
