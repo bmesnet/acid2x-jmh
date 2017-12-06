@@ -1,0 +1,23 @@
+export ROOT=/root
+export LD_LIBRARY_PATH=$ROOT/snap/actions/hls_acid/jni:$ROOT/snap/software/lib
+#used for running snap in CPU mode
+export SNAP_CONFIG=CPU
+
+#create the header file for org.apache.hadoop.hive.ql.exec.vector.VectorizedRowBatch 
+cd $ROOT/acid2x-jmh
+javah -cp target/benchmarks.jar  org.apache.hadoop.hive.ql.io.orc.JNICall
+mv -f $ROOT/acid2x-jmh/org_apache_hadoop_hive_ql_io_orc_JNICall.h $ROOT/snap/actions/hls_acid/jni/.
+#if the above javah is not succesful, then it may be needed to run 'mvn clean package' once before starting again
+
+#Create the header file from JNICall
+#cd /root/acid2x-jmh/target/classes
+#javah  org.apache.hadoop.hive.ql.io.orc.JNICall
+#Move the header file created to /root/snap/actions/hls_acid/jni
+#mv -f /root/acid2x-jmh/target/classes/org_apache_hadoop_hive_ql_io_orc_JNICall.h /root/snap/actions/hls_acid/jni/.
+
+#compile the c files
+cd $ROOT/snap/actions/hls_acid/jni
+./compile
+cd $ROOT/acid2x-jmh
+
+mvn clean package

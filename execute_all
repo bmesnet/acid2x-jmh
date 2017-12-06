@@ -1,0 +1,6 @@
+export ROOT=/root
+export LD_LIBRARY_PATH=$ROOT/snap/actions/hls_acid/jni:$ROOT/snap/software/lib
+#used for running snap in CPU mode
+export SNAP_CONFIG=CPU
+
+java -Djava.library.path=$ROOT/snap/actions/hls_acid/jni:$ROOT/snap/software/lib -jar target/benchmarks.jar -prof stack

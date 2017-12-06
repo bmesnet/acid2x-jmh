@@ -11,11 +11,15 @@ import org.apache.hadoop.hive.common.ValidTxnList;
 import org.apache.hadoop.hive.ql.exec.vector.LongColumnVector;
 import org.apache.hadoop.hive.ql.exec.vector.VectorizedRowBatch;
 
+import org.apache.hadoop.hive.ql.io.orc.JNICall;
+
+
 public class ColumnizedDeleteEventRegistry implements DeleteEventRegistry {
 
   /**
    * A simple wrapper class to hold the (otid, bucketProperty, rowId) pair.
    */
+  JNICall jni;
   public static class DeleteRecordKey implements Comparable<DeleteRecordKey> {
     private long originalTransactionId;
     /**
@@ -57,7 +61,7 @@ public class ColumnizedDeleteEventRegistry implements DeleteEventRegistry {
       return "otid: " + originalTransactionId + " bucketP:" + bucketProperty
           + " rowid: " + rowId;
     }
-  }
+  } 
 
   public static class DeleteReaderValue {
     public DeleteReaderValue() {
@@ -104,12 +108,22 @@ public class ColumnizedDeleteEventRegistry implements DeleteEventRegistry {
   private CompressedOtid compressedOtids[];
   private ValidTxnList validTxnList;
 
+
   public ColumnizedDeleteEventRegistry(ValidTxnList validTxns, Iterable<Entry<DeleteRecordKey,DeleteReaderValue>> sortMerger, int totalDeleteEventCount) {
+    
+    /* JNI INIT */
+
+    JNICall myjni = new JNICall();
+    this.jni = myjni;
+
+    /* END JNI INIT */
+
     this.rowIds = null;
     this.validTxnList = validTxns;
     this.compressedOtids = null;
     this.rowIds = new long[totalDeleteEventCount];
     fakeDeleteDeltas(sortMerger);
+
   }
 
   private void fakeDeleteDeltas(
@@ -128,6 +142,12 @@ public class ColumnizedDeleteEventRegistry implements DeleteEventRegistry {
       otids[index] = deleteRecordKey.originalTransactionId;
       bucketProperties[index] = deleteRecordKey.bucketProperty;
       rowIds[index] = deleteRecordKey.rowId;
+
+      // Start of JNI insertion 
+      jni.SnapBuildHashTable(index, deleteRecordKey);
+      
+      // End of JNI insertion 
+      
       ++index;
       if (lastSeenOtid != deleteRecordKey.originalTransactionId ||
         lastSeenBucketProperty != deleteRecordKey.bucketProperty) {
@@ -204,6 +224,12 @@ public class ColumnizedDeleteEventRegistry implements DeleteEventRegistry {
   @Override
   public void findDeletedRecords(VectorizedRowBatch batch, BitSet selectedBitSet)
       throws IOException {
+
+      // Start of JNI insertion 
+      jni.SnapReadHashTable(batch, selectedBitSet);
+
+      // End of JNI insertion 
+      
     if (rowIds == null || compressedOtids == null) {
       return;
     }
