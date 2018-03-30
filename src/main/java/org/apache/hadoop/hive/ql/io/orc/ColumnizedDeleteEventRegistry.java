@@ -112,9 +112,10 @@ public class ColumnizedDeleteEventRegistry implements DeleteEventRegistry {
   public ColumnizedDeleteEventRegistry(ValidTxnList validTxns, Iterable<Entry<DeleteRecordKey,DeleteReaderValue>> sortMerger, int totalDeleteEventCount) {
     
     /* JNI INIT */
-
+/* BM
     JNICall myjni = new JNICall();
     this.jni = myjni;
+BM*/
 
     /* END JNI INIT */
 
@@ -133,6 +134,11 @@ public class ColumnizedDeleteEventRegistry implements DeleteEventRegistry {
     int lastSeenBucketProperty = -1;
     long otids[] = new long[rowIds.length];
     int[] bucketProperties = new int [rowIds.length];
+
+    // Start of JNI insertion 
+     /*BM jni.SnapInitHashTable();
+ BM */
+    // End of JNI insertion 
     
     int index = 0;
     for (Entry<DeleteRecordKey, DeleteReaderValue> entry : sortMerger) {
@@ -144,7 +150,7 @@ public class ColumnizedDeleteEventRegistry implements DeleteEventRegistry {
       rowIds[index] = deleteRecordKey.rowId;
 
       // Start of JNI insertion 
-      jni.SnapBuildHashTable(index, deleteRecordKey);
+       //BM jni.SnapBuildHashTable(index, deleteRecordKey);
       
       // End of JNI insertion 
       
@@ -225,20 +231,38 @@ public class ColumnizedDeleteEventRegistry implements DeleteEventRegistry {
   public void findDeletedRecords(VectorizedRowBatch batch, BitSet selectedBitSet)
       throws IOException {
 
-      // Start of JNI insertion 
-      jni.SnapReadHashTable(batch, selectedBitSet);
-
-      // End of JNI insertion 
       
     if (rowIds == null || compressedOtids == null) {
       return;
     }
+
+    // Start of JNI insertion
+    //
+     /** JNI PART OF CODE 2 **/
+     long[] _originalTransactionVector = ((LongColumnVector) batch.cols[OrcRecordUpdater.ORIGINAL_TRANSACTION]).vector;
+     long[] _bucketProperties = ((LongColumnVector) batch.cols[OrcRecordUpdater.BUCKET]).vector;
+     long[] _rowIdVector = ((LongColumnVector) batch.cols[OrcRecordUpdater.ROW_ID]).vector;
+
+
+    //jni.SubSnapReadHashTable(selectedBitSet, _originalTransactionVector, _bucketProperties, _rowIdVector, validTxnList);
+
+
+     //BM jni.SubSnapReadHashTable(selectedBitSet, _originalTransactionVector, _bucketProperties, _rowIdVector);
+
+
+    //
+    //System.out.println("RC jni.SubSnapReadHashTable ---->"+selectedBitSet);
+    // End of JNI insertion
+    
+
+
     // in regular impl, this is called a function above
-    findRecordsWithInvalidTransactionIds(batch, selectedBitSet);
+    /*BM2*/  findRecordsWithInvalidTransactionIds(batch, selectedBitSet);
+    //System.out.println("RC findRecordsWithInvalidTransactionIds ---->"+selectedBitSet);
 
     // Iterate through the batch and for each (otid, rowid) in the batch
     // check if it is deleted or not.
-
+    /* BM2*/
     long[] originalTransactionVector = batch.cols[OrcRecordUpdater.ORIGINAL_TRANSACTION].isRepeating ? null
         : ((LongColumnVector) batch.cols[OrcRecordUpdater.ORIGINAL_TRANSACTION]).vector;
     long repeatedOriginalTransaction = (originalTransactionVector != null) ? -1
@@ -251,6 +275,12 @@ public class ColumnizedDeleteEventRegistry implements DeleteEventRegistry {
 
     long[] rowIdVector = ((LongColumnVector) batch.cols[OrcRecordUpdater.ROW_ID]).vector;
 
+
+
+    
+   
+
+    //selectedBitSet.nextSetBit(0) returns always -1
     for (int setBitIndex = selectedBitSet.nextSetBit(0); setBitIndex >= 0; setBitIndex = selectedBitSet
         .nextSetBit(setBitIndex + 1)) {
       long otid = originalTransactionVector != null ? originalTransactionVector[setBitIndex]
@@ -260,8 +290,15 @@ public class ColumnizedDeleteEventRegistry implements DeleteEventRegistry {
       long rowId = rowIdVector[setBitIndex];
       if (isDeleted(otid, bucketProperty, rowId)) {
         selectedBitSet.clear(setBitIndex);
+        //System.out.println("RC selectedBitSet ---->"+setBitIndex);
       }
+      //else {
+        //System.out.println("|");
+      //}
     }
+/*BM2*/
+
+
   }
   
   private void findRecordsWithInvalidTransactionIds(VectorizedRowBatch batch,
@@ -282,8 +319,13 @@ public class ColumnizedDeleteEventRegistry implements DeleteEventRegistry {
         .nextSetBit(setBitIndex + 1)) {
       if (!validTxnList.isTxnValid(currentTransactionVector[setBitIndex])) {
         selectedBitSet.clear(setBitIndex);
+        //System.out.println("RC findrecord - selectedBitSet ---->"+setBitIndex);
       }
+      //else {
+        //System.out.println("| | ");
+      //}
     }
+    //System.out.println("RC findRecords---->"+selectedBitSet);
   }
 
   @Override
