@@ -16,8 +16,10 @@ mv -f $ROOT/acid2x-jmh/org_apache_hadoop_hive_ql_io_orc_JNICall.h $ROOT/snap/act
 #mv -f /root/acid2x-jmh/target/classes/org_apache_hadoop_hive_ql_io_orc_JNICall.h /root/snap/actions/hls_acid/jni/.
 
 #compile the c files
+cd $ROOT/snap/actions/hls_acid/sw
+make
 cd $ROOT/snap/actions/hls_acid/jni
 ./compile
-cd $ROOT/acid2x-jmh
 
+cd $ROOT/acid2x-jmh
 mvn clean package
