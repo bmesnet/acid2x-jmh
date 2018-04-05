@@ -112,10 +112,8 @@ public class ColumnizedDeleteEventRegistry implements DeleteEventRegistry {
   public ColumnizedDeleteEventRegistry(ValidTxnList validTxns, Iterable<Entry<DeleteRecordKey,DeleteReaderValue>> sortMerger, int totalDeleteEventCount) {
     
     /* JNI INIT */
-/* BM
     JNICall myjni = new JNICall();
     this.jni = myjni;
-BM*/
 
     /* END JNI INIT */
 
@@ -136,8 +134,7 @@ BM*/
     int[] bucketProperties = new int [rowIds.length];
 
     // Start of JNI insertion 
-     /*BM jni.SnapInitHashTable();
- BM */
+     jni.SnapInitHashTable();
     // End of JNI insertion 
     
     int index = 0;
@@ -150,7 +147,7 @@ BM*/
       rowIds[index] = deleteRecordKey.rowId;
 
       // Start of JNI insertion 
-       //BM jni.SnapBuildHashTable(index, deleteRecordKey);
+       jni.SnapBuildHashTable(index, deleteRecordKey);
       
       // End of JNI insertion 
       
@@ -245,9 +242,7 @@ BM*/
 
 
     //jni.SubSnapReadHashTable(selectedBitSet, _originalTransactionVector, _bucketProperties, _rowIdVector, validTxnList);
-
-
-     //BM jni.SubSnapReadHashTable(selectedBitSet, _originalTransactionVector, _bucketProperties, _rowIdVector);
+     jni.SubSnapReadHashTable(selectedBitSet, _originalTransactionVector, _bucketProperties, _rowIdVector);
 
 
     //
@@ -257,12 +252,12 @@ BM*/
 
 
     // in regular impl, this is called a function above
-    /*BM2*/  findRecordsWithInvalidTransactionIds(batch, selectedBitSet);
+    findRecordsWithInvalidTransactionIds(batch, selectedBitSet);
     //System.out.println("RC findRecordsWithInvalidTransactionIds ---->"+selectedBitSet);
 
     // Iterate through the batch and for each (otid, rowid) in the batch
     // check if it is deleted or not.
-    /* BM2*/
+   
     long[] originalTransactionVector = batch.cols[OrcRecordUpdater.ORIGINAL_TRANSACTION].isRepeating ? null
         : ((LongColumnVector) batch.cols[OrcRecordUpdater.ORIGINAL_TRANSACTION]).vector;
     long repeatedOriginalTransaction = (originalTransactionVector != null) ? -1
@@ -296,7 +291,6 @@ BM*/
         //System.out.println("|");
       //}
     }
-/*BM2*/
 
 
   }
